@@ -2,6 +2,13 @@ import { z } from "zod";
 import marketplace from "./data/marketplace.json" with { type: "json" };
 import people from "./data/people.json" with { type: "json" };
 import type { JobWithCompany } from "@/features/jobs/types";
+import {
+  e01Application,
+  e01ReviewsSchema,
+  e01VariantSchema,
+  type E01Review,
+  type E01Variant,
+} from "./e01";
 
 const id = z
   .string()
@@ -140,6 +147,7 @@ export const stateSchema = z
     applications: z.array(applicationSchema).max(2000),
     saved: z.array(z.object({ candidateId: id, jobId: id })).max(5000),
     drafts: z.array(draftSchema).max(1000),
+    e01Reviews: e01ReviewsSchema.optional(),
   })
   .superRefine((s, ctx) => {
     const problem = (message: string) => ctx.addIssue({ code: "custom", message });
@@ -211,6 +219,7 @@ export type Action =
       consent: boolean;
     }
   | { type: "stage"; applicationId: string; stage: Stage; note: string }
+  | { type: "e01-review"; variant: E01Variant; review: E01Review }
   | { type: "withdraw"; applicationId: string }
   | { type: "publish"; job: z.infer<typeof jobSchema> }
   | { type: "company"; name: string; description: string };
@@ -317,6 +326,10 @@ export function transition(
       }),
     );
     s.drafts = s.drafts.filter((x) => !(x.candidateId === p.id && x.jobId === job.id));
+  } else if (action.type === "e01-review") {
+    if (!e01Application(s, employer().companyId)) fail("Ocena zgłoszenia jest niedostępna.");
+    const variant = e01VariantSchema.parse(action.variant);
+    s.e01Reviews = e01ReviewsSchema.parse({ ...s.e01Reviews, [variant]: action.review });
   } else if (action.type === "stage" || action.type === "withdraw") {
     const application = s.applications.find((x) => x.id === action.applicationId);
     if (!application) return fail("Nie znaleziono aplikacji.");

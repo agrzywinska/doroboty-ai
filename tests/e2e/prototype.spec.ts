@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 async function choose(page: Page, name: string) {
   await page.goto("/#/auth/sign-in");
   await page.getByRole("button", { name: `Wejdź jako ${name}`, exact: true }).click();
+  await expect(page).not.toHaveURL(/auth\/sign-in/);
 }
 async function application(page: Page) {
   await choose(page, "Anna Kowalska");
@@ -28,7 +29,10 @@ for (const [name, filename] of [
   }) => {
     const external: string[] = [];
     page.on("request", (request) => {
-      if (!request.url().startsWith("http://127.0.0.1:3106")) external.push(request.url());
+      const url = new URL(request.url());
+      if (["http:", "https:"].includes(url.protocol) && url.origin !== "http://127.0.0.1:3106") {
+        external.push(url.origin);
+      }
     });
     await choose(page, name);
     await page.goto("/#/app/profil");
@@ -219,6 +223,7 @@ test("invalid import preserves state, valid import replaces state, reset asks fo
   await expect(page.getByText("Zaimportowana Anna", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "Resetuj scenariusz", exact: true }).click();
   await page.getByRole("button", { name: "Resetuj", exact: true }).click();
+  await expect(page.getByText("Zaimportowana Anna", { exact: true }).first()).toBeHidden();
   expect(
     await page.evaluate(
       (key) => JSON.parse(localStorage.getItem(key)!).activePersonId,
@@ -226,6 +231,51 @@ test("invalid import preserves state, valid import replaces state, reset asks fo
     ),
   ).toBe(null);
 });
+test("a stale tab cannot overwrite newer changes and can save after reload", async ({
+  page,
+  context,
+}) => {
+  await choose(page, "Anna Kowalska");
+  await page.goto("/#/app/profil");
+  const stale = await context.newPage();
+  await stale.goto("/#/oferty/ai-product-manager");
+  await page.getByLabel("Imię i nazwisko").fill("Anna po zapisie");
+  await page.getByRole("button", { name: "Zapisz profil", exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText("Profil został zapisany.");
+  const recent = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
+
+  const bookmark = stale.getByRole("button", { name: "Zapisz ofertę", exact: true });
+  await bookmark.click();
+  await expect(stale.getByText(/Zapis zmienił się w innej karcie/)).toBeVisible();
+  await expect(bookmark).toHaveAttribute("aria-pressed", "false");
+
+  await stale.goto("/#/app/settings");
+  await stale.getByRole("button", { name: "Resetuj scenariusz" }).click();
+  await stale.getByRole("button", { name: "Resetuj", exact: true }).click();
+  await expect(stale.getByRole("alertdialog")).toBeHidden();
+  expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(recent);
+
+  await stale.reload();
+  await stale.goto("/#/oferty/ai-product-manager");
+  await bookmark.click();
+  await expect(bookmark).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(page.getByLabel("Imię i nazwisko")).toHaveValue("Anna po zapisie");
+});
+
+test("a missing application bundle leaves a safe startup report on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 780 });
+  await page.route(/\/assets\/index-[^/]+\.js$/, (route) => route.abort());
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Uruchamianie prototypu" })).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("Kod zgłoszenia: APP-START");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  await page.unrouteAll();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Uruchamianie prototypu" })).toBeHidden();
+});
+
 test("unreadable save stays untouched while the user works in memory", async ({ page }) => {
   await page.goto("/");
   await page.evaluate((key) => localStorage.setItem(key, '{"version":999}'), STORAGE_KEY);
@@ -240,14 +290,21 @@ test("unreadable save stays untouched while the user works in memory", async ({ 
 });
 test("storage denial keeps the app usable and offers export", async ({ page }) => {
   await page.addInitScript(() => {
+    const original = Storage.prototype.setItem;
     Object.defineProperty(Storage.prototype, "setItem", {
-      value() {
-        throw new Error("Storage denied");
+      value(this: Storage, key: string, value: string) {
+        if (this === localStorage) throw new Error("Synthetic private text");
+        return original.call(this, key, value);
       },
     });
   });
   await choose(page, "Anna Kowalska");
   await expect(page.getByRole("status")).toContainText("Wyeksportuj");
+  await page.goto("/#/app/settings");
+  await expect(page.getByText(/Ostatni kod w tej karcie: SCENARIO-SAVE/)).toBeVisible();
+  expect(await page.evaluate(() => sessionStorage.getItem("doroboty.incident"))).toMatch(
+    /^SCENARIO-SAVE · [0-9T:.Z-]+$/,
+  );
   await page.goto("/#/app/profil");
   await expect(page.getByLabel("Imię i nazwisko")).toHaveValue("Anna Kowalska");
 });
@@ -365,6 +422,7 @@ for (const width of [1440, 375]) {
       buffer: Buffer.from(JSON.stringify(legacy)),
     });
     await page.getByRole("button", { name: "Importuj", exact: true }).click();
+    await expect(page.getByRole("status")).toHaveText("Dane zostały zaimportowane.");
     await page.goto(`/#/aplikuj/${job.slug}`);
     await page.reload();
     const form = page.locator("main form");

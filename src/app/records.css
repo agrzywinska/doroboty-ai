@@ -88,6 +88,102 @@
   line-height: 1.5;
   letter-spacing: normal;
 }
+
+.e01-role {
+  margin-bottom: var(--gui-space-l);
+}
+.record-reading .e01-contribution {
+  margin-top: var(--gui-space-m);
+  padding: var(--gui-space-m);
+  border: 1px solid var(--gui-edge);
+  border-radius: var(--gui-radius-s);
+  background: var(--gui-surface-muted);
+}
+.e01-contribution dl > div + div {
+  margin-top: var(--gui-space-s);
+}
+.e01-contribution dt,
+.e01-review legend {
+  font-weight: var(--weight-ui-heavy);
+}
+.e01-contribution dd {
+  margin-top: var(--gui-space-xxs);
+  overflow-wrap: anywhere;
+}
+.e01-review,
+.e01-fragment,
+.e01-result {
+  display: grid;
+  gap: var(--gui-space-s);
+  min-width: 0;
+}
+.e01-review {
+  justify-items: start;
+}
+.e01-review fieldset,
+.e01-fragment {
+  width: 100%;
+  min-width: 0;
+}
+.e01-decisions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gui-space-xs);
+  margin-top: var(--gui-space-xs);
+}
+.e01-decisions label {
+  display: flex;
+  align-items: center;
+  gap: var(--gui-space-xs);
+  min-height: 48px;
+  padding: var(--gui-space-xs) var(--gui-space-s);
+  border: 1px solid var(--gui-edge);
+  border-radius: var(--gui-radius-s);
+  cursor: pointer;
+}
+.e01-decisions label:has(input:checked) {
+  box-shadow: var(--gui-edge-shadow);
+  font-weight: var(--weight-ui-heavy);
+}
+.e01-decisions input {
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  accent-color: var(--gui-text);
+}
+.e01-fragment [role="alert"] {
+  color: var(--gui-text);
+  font-weight: var(--weight-ui-heavy);
+}
+.e01-fragment [data-slot="select-trigger"] {
+  background: var(--gui-surface);
+  box-shadow: var(--gui-control-shadow);
+}
+.e01-fragment [data-slot="select-value"],
+.e01-fragment-options [data-slot="select-item"] > :first-child {
+  min-width: 0;
+  flex-shrink: 1;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.e01-result blockquote {
+  margin: 0;
+  padding-inline-start: var(--gui-space-s);
+  border-inline-start: 1px solid var(--gui-edge);
+  overflow-wrap: anywhere;
+}
+.e01-result h3:focus-visible {
+  outline: 2px solid var(--gui-focus);
+  outline-offset: 4px;
+}
+@media (max-width: 600px) {
+  .e01-decisions {
+    grid-template-columns: 1fr;
+  }
+  .e01-review > button {
+    width: 100%;
+  }
+}
 .cv-file-row {
   display: flex;
   align-items: center;

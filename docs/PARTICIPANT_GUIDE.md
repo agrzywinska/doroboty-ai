@@ -23,9 +23,13 @@ Karolina and Tomasz see their respective companies in the interface; this is rol
 
 ## Save, share and recover
 
-Changes survive reload in this browser. Settings can export a JSON file, import a scenario or reset to fixtures. Import/reset asks before replacing state. If a save is incompatible, download the original before resetting. Storage failure is shown explicitly; export before closing the tab. Use one editing tab at a time.
+Changes survive reload in this browser. Settings can export a JSON file, import a scenario or reset to fixtures. Import/reset asks before replacing state. If a save is incompatible, download the original before resetting. Storage failure is shown explicitly; export before closing the tab. Use one editing tab at a time. If a different tab changed the scenario, this tab blocks the next write. Export any work held only in this tab before reloading. For persistent saves, use a current browser with Web Locks on localhost or HTTPS.
 
 A URL shares the interface, not your local changes. To transfer a scenario, share the exported file and import it in the other browser. Exports include all personas, applications and notes; never enter real personal data.
+
+## Report a problem
+
+Give the facilitator the incident code shown on the startup screen or under **Zgłaszanie problemów** in settings, the time and the step where it happened. Keep scenario exports and form contents out of the report. An incident code is visible locally; send it through the course contact channel.
 
 ## Static build
 

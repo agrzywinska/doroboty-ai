@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { initialState, transition, type Action, type State } from "./model";
-import { parseState, readState, saveState, type StoragePort } from "./storage";
+import { parseState, readState, saveState, STORAGE_KEY, type StoragePort } from "./storage";
+import { recordIncident } from "./diagnostics";
+
 function browserStorage(): StoragePort | null {
   try {
     return window.localStorage;
@@ -8,48 +10,70 @@ function browserStorage(): StoragePort | null {
     return null;
   }
 }
+
 function useStore() {
   const [loaded] = useState(() => readState(browserStorage()));
   const [state, setState] = useState(loaded.state);
   const [issue, setIssue] = useState(loaded.issue);
   const [error, setError] = useState("");
   const [blocked, setBlocked] = useState(loaded.blocked);
+  const persisted = useRef({ raw: loaded.raw, blocked: loaded.blocked });
   const latest = useRef(state);
-  function commit(next: State, replace = false) {
+
+  function applyChange(change: (state: State) => State, replace: boolean) {
+    const storage = browserStorage();
+    const expected = persisted.current;
+    let writable = navigator.locks ? storage : null;
+    try {
+      if (storage && storage.getItem(STORAGE_KEY) !== expected.raw) {
+        setIssue(
+          "Zapis zmienił się w innej karcie. Czynność wstrzymano. Jeśli masz zmiany zapisane tylko w tej karcie, najpierw wyeksportuj scenariusz, a potem odśwież stronę.",
+        );
+        return false;
+      }
+    } catch {
+      writable = null;
+    }
+
+    const next = change(latest.current);
     latest.current = next;
     setState(next);
     setError("");
-    if (blocked && !replace) return;
+    if (expected.blocked && !replace && writable) return true;
     try {
-      saveState(browserStorage(), next);
+      const raw = saveState(writable, next);
+      persisted.current = { raw, blocked: false };
+      setBlocked(false);
       setIssue("");
-      if (replace) setBlocked(false);
-    } catch (e) {
-      setIssue((e as Error).message);
+    } catch (error) {
+      recordIncident("SCENARIO-SAVE");
+      setIssue((error as Error).message);
     }
+    return true;
   }
-  function run(action: Action) {
+
+  async function commit(change: (state: State) => State, replace = false) {
     try {
-      commit(transition(latest.current, action));
-      return true;
-    } catch (e) {
+      if (navigator.locks) {
+        return await navigator.locks.request(STORAGE_KEY, () => applyChange(change, replace));
+      }
+      return applyChange(change, replace);
+    } catch (error) {
       setError(
-        e instanceof Error && e.name !== "ZodError"
-          ? e.message
+        error instanceof Error && error.name !== "ZodError"
+          ? error.message
           : "Sprawdź poprawność i długość wprowadzonych danych.",
       );
       return false;
     }
   }
+
+  function run(action: Action) {
+    return commit((state) => transition(state, action));
+  }
+
   function importState(raw: string) {
-    try {
-      const next = parseState(raw);
-      commit(next, true);
-      return true;
-    } catch (e) {
-      setError((e as Error).message);
-      return false;
-    }
+    return commit(() => parseState(raw), true);
   }
   useEffect(() => {
     document.documentElement.classList.remove("dark");
@@ -63,7 +87,7 @@ function useStore() {
     run,
     importState,
     clearError: () => setError(""),
-    reset: () => commit(initialState(), true),
+    reset: () => commit(() => initialState(), true),
   };
 }
 type Store = ReturnType<typeof useStore>;

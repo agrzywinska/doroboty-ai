@@ -27,6 +27,7 @@ export function FormSelect({
   disabled,
   className,
   triggerClassName,
+  contentClassName,
   onValueChange,
   progressiveFallback = false,
 }: {
@@ -41,6 +42,7 @@ export function FormSelect({
   disabled?: boolean;
   className?: string;
   triggerClassName?: string;
+  contentClassName?: string;
   onValueChange?: (value: string) => void;
   progressiveFallback?: boolean;
 }) {
@@ -64,7 +66,7 @@ export function FormSelect({
         <SelectTrigger id={id} aria-label={ariaLabel} className={cn("w-full", triggerClassName)}>
           <SelectValue placeholder={placeholder}>{selectedLabel}</SelectValue>
         </SelectTrigger>
-        <SelectContent align="start">
+        <SelectContent align="start" className={contentClassName}>
           {options.map((option) => (
             <SelectItem key={option.value || "__all"} value={option.value}>
               {option.label}

@@ -19,6 +19,9 @@ export function ApplicationRecord({
   audience,
   history,
   statusRef,
+  backTo,
+  answerContext,
+  answerSupplement,
   children,
   footer,
 }: {
@@ -30,6 +33,9 @@ export function ApplicationRecord({
   audience: "candidate" | "employer";
   history: RecordEvent[];
   statusRef?: Ref<HTMLSpanElement>;
+  backTo?: string;
+  answerContext?: ReactNode;
+  answerSupplement?: ReactNode;
   children?: ReactNode;
   footer?: ReactNode;
 }) {
@@ -41,7 +47,7 @@ export function ApplicationRecord({
     <article className="recruiting-record">
       <header className="recruiting-header">
         <nav aria-label="Ścieżka nawigacji" className="record-breadcrumb">
-          <BackLink to={candidate ? "/app/aplikacje" : "/app/kandydaci"}>
+          <BackLink to={backTo ?? (candidate ? "/app/aplikacje" : "/app/kandydaci")}>
             {candidate ? "Moje aplikacje" : "Kandydaci"}
           </BackLink>
           <span aria-hidden="true">/</span>
@@ -73,8 +79,10 @@ export function ApplicationRecord({
               label: "Odpowiedź",
               content: (
                 <>
+                  {answerContext}
                   <h3>Przesłana aplikacja</h3>
                   <p>{application.answer}</p>
+                  {answerSupplement}
                 </>
               ),
             },

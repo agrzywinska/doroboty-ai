@@ -31,6 +31,7 @@ const entries = [
   ".nvmrc",
   ".prettierrc.json",
   ".prettierignore",
+  ".gitattributes",
   ".gitignore",
   "tokens.css",
   "GUI.md",

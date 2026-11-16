@@ -16,6 +16,8 @@ import { CvAttachment } from "./cv-attachment";
 import { MatchScore } from "./match-score";
 import { RecruitingApplication } from "./recruiting-application";
 import { CandidateApplication } from "./candidate-application";
+import { e01Application } from "./e01";
+import { E01ApplicationReview } from "./e01-application-review";
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -49,8 +51,8 @@ export function PersonPicker() {
             <p className="my-4 text-muted-foreground">{person.headline}</p>
             <Button
               variant="outline"
-              onClick={() => {
-                run({ type: "select_person", id: person.id });
+              onClick={async () => {
+                if (!(await run({ type: "select_person", id: person.id }))) return;
                 navigate(
                   person.role === "candidate"
                     ? (safeNext ?? "/app")
@@ -143,11 +145,11 @@ export function ProfilePage({ preview = false }: { preview?: boolean }) {
   const { state, run } = usePrototype();
   const person = currentPerson(state)!;
   const [message, setMessage] = useState("");
-  function save(e: FormEvent<HTMLFormElement>) {
+  async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     if (
-      run({
+      await run({
         type: "profile",
         value: {
           name: String(data.get("name")),
@@ -269,7 +271,7 @@ export function ApplyPage() {
         </Link>
       </section>
     );
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
     if (submittedOnce.current) return;
     setAttempted(true);
@@ -281,14 +283,16 @@ export function ApplyPage() {
       document.getElementById("application-consent")?.focus();
       return;
     }
-    if (run({ type: "submit", jobId: job!.id, notes, generated, answer, consent })) {
-      submittedOnce.current = true;
+    submittedOnce.current = true;
+    if (await run({ type: "submit", jobId: job!.id, notes, generated, answer, consent })) {
       setSubmitted(true);
       if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         const rect = sendButton.current?.getBoundingClientRect();
         if (rect)
           setConfettiOrigin({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
       }
+    } else {
+      submittedOnce.current = false;
     }
   }
   return (
@@ -386,8 +390,8 @@ export function ApplyPage() {
                 type="button"
                 disabled={submitted}
                 variant="outline"
-                onClick={() => {
-                  if (run({ type: "draft", jobId: job.id, notes, generated, answer }))
+                onClick={async () => {
+                  if (await run({ type: "draft", jobId: job.id, notes, generated, answer }))
                     setMessage("Szkic został zapisany.");
                 }}
               >
@@ -415,7 +419,9 @@ export function ApplicationsPage({ employer = false }: { employer?: boolean }) {
   const person = currentPerson(state)!;
   const [query, setQuery] = useState("");
   const [params] = useSearchParams();
-  const applications = state.applications.filter(
+  const example = employer ? e01Application(state, person.companyId) : undefined;
+  const records = example ? [example, ...state.applications] : state.applications;
+  const applications = records.filter(
     (x) =>
       (employer ? x.companyId === person.companyId : x.candidateId === person.id) &&
       `${x.candidateName} ${x.jobTitle}`
@@ -441,7 +447,10 @@ export function ApplicationsPage({ employer = false }: { employer?: boolean }) {
                 <div>
                   <Link
                     className="text-xl font-semibold text-[var(--gui-link)]"
-                    to={`${employer ? "/app/kandydaci" : "/app/aplikacje"}/${a.id}`}
+                    to={
+                      `${employer ? "/app/kandydaci" : "/app/aplikacje"}/${a.id}` +
+                      (a === example && params.get("e01") === "karta" ? "?e01=karta" : "")
+                    }
                   >
                     {employer ? a.candidateName : a.jobTitle}
                   </Link>
@@ -466,8 +475,14 @@ export function ApplicationsPage({ employer = false }: { employer?: boolean }) {
 }
 export function ApplicationDetail({ employer = false }: { employer?: boolean }) {
   const { id } = useParams();
+  const [params] = useSearchParams();
   const { state } = usePrototype();
   const person = currentPerson(state)!;
+  const example = employer ? e01Application(state, person.companyId) : undefined;
+  if (example && id === example.id) {
+    const variant = params.get("e01") === "karta" ? "card" : "standard";
+    return <E01ApplicationReview key={variant} application={example} variant={variant} />;
+  }
   const application = state.applications.find(
     (x) =>
       x.id === id && (employer ? x.companyId === person.companyId : x.candidateId === person.id),

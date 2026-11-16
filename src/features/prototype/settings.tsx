@@ -4,6 +4,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { usePrototype } from "./store";
 import { serializeState, MAX_IMPORT_BYTES } from "./storage";
 import { PageTitle } from "./shell";
+import { readIncident } from "./diagnostics";
 
 export function downloadText(name: string, text: string, type = "application/json") {
   const url = URL.createObjectURL(new Blob([text], { type }));
@@ -21,6 +22,7 @@ export function SettingsPage() {
   const [raw, setRaw] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const incident = readIncident();
   async function readFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -37,11 +39,10 @@ export function SettingsPage() {
       setError("Nie udało się odczytać pliku.");
     }
   }
-  function confirm() {
+  async function confirm() {
     if (pending === "reset") {
-      reset();
-      setMessage("Przywrócono scenariusz początkowy.");
-    } else if (importState(raw)) {
+      if (await reset()) setMessage("Przywrócono scenariusz początkowy.");
+    } else if (await importState(raw)) {
       setMessage("Dane zostały zaimportowane.");
     }
     setPending(null);
@@ -99,6 +100,14 @@ export function SettingsPage() {
           Wybór osoby zastępuje logowanie. Propozycje AI, Match Score i podsumowania odtwarzają
           przygotowany scenariusz; nie oceniają kompetencji. Używaj przykładowych danych i CV.
         </p>
+      </section>
+      <section className="prototype-panel prototype-form mt-6">
+        <h2>Zgłaszanie problemów</h2>
+        <p>
+          Podaj prowadzącemu kod zgłoszenia, godzinę i krok, na którym wystąpił problem. Pomiń dane
+          z formularzy i plik scenariusza.
+        </p>
+        {incident && <p>Ostatni kod w tej karcie: {incident}</p>}
       </section>
       <ConfirmDialog
         open={pending !== null}

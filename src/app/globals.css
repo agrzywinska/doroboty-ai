@@ -134,3 +134,7 @@
 :root {
   --font-timeless: "Timeless Grotesk", sans-serif;
 }
+
+#root:not(:empty) + #startup-fallback {
+  display: none;
+}
