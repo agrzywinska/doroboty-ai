@@ -2,7 +2,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./features/prototype/app";
 import { recordIncident } from "./features/prototype/diagnostics";
+import { startAnalytics } from "./features/analytics/posthog";
 import "./app/globals.css";
+
+startAnalytics();
 
 createRoot(document.getElementById("root")!, {
   onUncaughtError() {

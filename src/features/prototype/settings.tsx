@@ -141,6 +141,13 @@ export function PrivacyPage() {
           Możesz usunąć zmiany przyciskiem „Resetuj scenariusz” w ustawieniach lub wyczyścić dane
           witryny w przeglądarce. Hosting może prowadzić własne logi dostępu.
         </p>
+        <p>
+          Na doroboty-ai-e01.vercel.app zapisujemy wizyty i kliknięcia przycisków oraz linków w
+          PostHog w regionie UE. Wysyłamy typ ekranu i kontrolki, bez treści formularzy, CV i
+          adresów z parametrami. Losowy identyfikator wizyty pozostaje tylko w pamięci do
+          odświeżenia strony. Analityka nie używa ciasteczek ani pamięci przeglądarki i nie nagrywa
+          sesji. Lokalna wersja oraz pozostałe adresy nie wysyłają tych zdarzeń.
+        </p>
       </div>
     </section>
   );
