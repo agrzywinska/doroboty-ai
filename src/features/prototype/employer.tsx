@@ -16,6 +16,8 @@ import { currentPerson, jobSchema } from "./model";
 import { usePrototype } from "./store";
 import { Field } from "./workspace";
 import { Empty, NotFound, PageTitle } from "./shell";
+import { usePostHog } from "@posthog/react";
+import { posthogLogger } from "@/lib/posthog-logger";
 
 export function EmployerJobs() {
   const { state } = usePrototype();
@@ -68,6 +70,7 @@ export function EmployerJobs() {
 export function EmployerJobEditor() {
   const { id } = useParams();
   const { state, run } = usePrototype();
+  const posthog = usePostHog();
   const person = currentPerson(state)!;
   const navigate = useNavigate();
   const existing = state.jobs.find((x) => x.id === id && x.companyId === person.companyId);
@@ -133,7 +136,20 @@ export function EmployerJobEditor() {
       );
       return;
     }
-    if (run({ type: "publish", job: parsed.data })) navigate("/app/oferty");
+    if (run({ type: "publish", job: parsed.data })) {
+      posthog?.capture("job_published", {
+        job_id: parsed.data.id,
+        job_category: parsed.data.category,
+        is_new: !existing,
+      });
+      posthogLogger.info("job published", {
+        workflow: "job.published",
+        job_id: parsed.data.id,
+        job_category: parsed.data.category,
+        is_new: !existing,
+      });
+      navigate("/app/oferty");
+    }
   }
   return (
     <>
@@ -274,6 +290,7 @@ export function EmployerJobEditor() {
 }
 export function CompanyEditor() {
   const { state, run } = usePrototype();
+  const posthog = usePostHog();
   const person = currentPerson(state)!;
   const company = state.companies.find((x) => x.id === person.companyId)!;
   const [message, setMessage] = useState("");
@@ -286,8 +303,10 @@ export function CompanyEditor() {
         name: String(data.get("name")),
         description: String(data.get("description")),
       })
-    )
+    ) {
+      posthog?.capture("company_profile_saved");
       setMessage("Dane firmy zostały zapisane.");
+    }
   }
   return (
     <>
