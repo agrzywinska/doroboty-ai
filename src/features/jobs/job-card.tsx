@@ -6,8 +6,10 @@ import type { JobWithCompany } from "./types";
 import { categoryLabels, functionLabels, remoteLabels, seniorityLabels } from "./presentation";
 import { CompanyLogo } from "./company-logo";
 import { SalaryFact } from "./salary-fact";
+import { usePostHog } from "@posthog/react";
 export function JobCard({ job, saved }: { job: JobWithCompany; saved?: boolean }) {
   const { run } = usePrototype();
+  const posthog = usePostHog();
   return (
     <article className="pp-job-card">
       <CompanyLogo company={job.company} />
@@ -49,7 +51,10 @@ export function JobCard({ job, saved }: { job: JobWithCompany; saved?: boolean }
               size="icon-sm"
               aria-label={`Zapisz ofertę: ${job.title}`}
               aria-pressed={saved}
-              onClick={() => run({ type: "toggle_saved", jobId: job.id })}
+              onClick={() => {
+                run({ type: "toggle_saved", jobId: job.id });
+                posthog?.capture(saved ? "job_unsaved" : "job_saved", { job_id: job.id });
+              }}
             >
               <Bookmark className="pp-icon" />
             </Button>

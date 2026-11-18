@@ -124,9 +124,10 @@ export function PrivacyPage() {
           ani poufnych informacji.
         </p>
         <p>
-          Profile, aplikacje i ustawienia pozostają w pamięci tej przeglądarki. Aplikacja nie wysyła
-          ich do bazy, dostawcy AI ani systemu analitycznego. Plik eksportu zawiera cały lokalny
-          scenariusz, w tym notatki.
+          Treści profili, aplikacje i ustawienia pozostają w pamięci tej przeglądarki. Nie są
+          wysyłane do bazy ani dostawcy AI. Analityka rejestruje wybrane działania oraz
+          identyfikator, nazwę i rolę wybranego profilu, bez treści profili, CV, aplikacji, notatek
+          i eksportów. Plik eksportu zawiera cały lokalny scenariusz, w tym notatki.
         </p>
         <p>
           Możesz usunąć zmiany przyciskiem „Resetuj scenariusz” w ustawieniach lub wyczyścić dane

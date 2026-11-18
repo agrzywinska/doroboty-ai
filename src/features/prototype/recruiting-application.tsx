@@ -4,9 +4,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApplicationRecord } from "./application-record";
 import { nextStages, stageLabels, type Application } from "./model";
 import { usePrototype } from "./store";
+import { usePostHog } from "@posthog/react";
+import { posthogLogger } from "@/lib/posthog-logger";
 
 export function RecruitingApplication({ application }: { application: Application }) {
   const { state, run } = usePrototype();
+  const posthog = usePostHog();
   const [note, setNote] = useState("");
   const [announcement, setAnnouncement] = useState("");
   const statusRef = useRef<HTMLSpanElement>(null);
@@ -40,6 +43,17 @@ export function RecruitingApplication({ application }: { application: Applicatio
                     variant={stage === "rejected" ? "outline" : "default"}
                     onClick={() => {
                       if (run({ type: "stage", applicationId: application.id, stage, note })) {
+                        posthog?.capture("application_stage_updated", {
+                          application_id: application.id,
+                          previous_stage: application.stage,
+                          stage,
+                        });
+                        posthogLogger.info("application stage updated", {
+                          workflow: "application.stage_updated",
+                          application_id: application.id,
+                          previous_stage: application.stage,
+                          stage,
+                        });
                         setNote("");
                         setAnnouncement(`Zapisano etap: ${stageLabels[stage]}.`);
                         pendingFocus.current = true;

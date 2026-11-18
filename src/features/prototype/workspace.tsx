@@ -16,6 +16,8 @@ import { CvAttachment } from "./cv-attachment";
 import { MatchScore } from "./match-score";
 import { RecruitingApplication } from "./recruiting-application";
 import { CandidateApplication } from "./candidate-application";
+import { usePostHog } from "@posthog/react";
+import { posthogLogger } from "@/lib/posthog-logger";
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -75,7 +77,7 @@ export function RequireRole({
   role?: "candidate" | "employer" | "operator";
   children: ReactNode;
 }) {
-  const { state } = usePrototype();
+  const { state, run } = usePrototype();
   const person = currentPerson(state);
   if (!person) return <PersonPicker />;
   if (role && person.role !== role)
@@ -86,7 +88,11 @@ export function RequireRole({
           {role === "candidate" ? "kandydata" : role === "employer" ? "pracodawcy" : "prowadzącego"}
           .
         </p>
-        <Link className={buttonVariants({ variant: "outline" })} to="/auth/sign-in">
+        <Link
+          className={buttonVariants({ variant: "outline" })}
+          to="/auth/sign-in"
+          onClick={() => run({ type: "select_person", id: null })}
+        >
           Zmień osobę
         </Link>
       </Empty>
@@ -141,6 +147,7 @@ export function WorkspaceHome() {
 }
 export function ProfilePage({ preview = false }: { preview?: boolean }) {
   const { state, run } = usePrototype();
+  const posthog = usePostHog();
   const person = currentPerson(state)!;
   const [message, setMessage] = useState("");
   function save(e: FormEvent<HTMLFormElement>) {
@@ -156,8 +163,10 @@ export function ProfilePage({ preview = false }: { preview?: boolean }) {
           location: String(data.get("location")),
         },
       })
-    )
+    ) {
+      posthog?.capture("candidate_profile_saved");
       setMessage("Profil został zapisany.");
+    }
   }
   return (
     <>
@@ -232,6 +241,7 @@ export function SavedPage() {
 export function ApplyPage() {
   const { slug } = useParams();
   const { state, run } = usePrototype();
+  const posthog = usePostHog();
   const person = currentPerson(state)!;
   const navigate = useNavigate();
   const job = publishedJobs(state).find((x) => x.slug === slug);
@@ -283,6 +293,12 @@ export function ApplyPage() {
     }
     if (run({ type: "submit", jobId: job!.id, notes, generated, answer, consent })) {
       submittedOnce.current = true;
+      posthog?.capture("application_submitted", { job_id: job!.id, job_category: job!.category });
+      posthogLogger.info("application submitted", {
+        workflow: "application.submitted",
+        job_id: job!.id,
+        job_category: job!.category,
+      });
       setSubmitted(true);
       if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         const rect = sendButton.current?.getBoundingClientRect();
@@ -387,8 +403,10 @@ export function ApplyPage() {
                 disabled={submitted}
                 variant="outline"
                 onClick={() => {
-                  if (run({ type: "draft", jobId: job.id, notes, generated, answer }))
+                  if (run({ type: "draft", jobId: job.id, notes, generated, answer })) {
+                    posthog?.capture("application_draft_saved", { job_id: job.id });
                     setMessage("Szkic został zapisany.");
+                  }
                 }}
               >
                 Zapisz szkic
